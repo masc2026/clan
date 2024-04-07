@@ -1,0 +1,70 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // IntelliSense verwenden, um herauszufinden, welche Attribute für das C#-Debuggen vorhanden sind
+      // Hover für die Beschreibung der vorhandenen Attribute verwenden
+      // Weitere Informationen finden Sie unter https://github.com/dotnet/vscode-csharp/blob/main/debugger-launchjson.md
+      "name": ".NET Core Launch (console)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      // Wenn Sie Zielframeworks geändert haben, stellen Sie sicher, dass Sie den Programmpfad aktualisieren.
+      "program": "${workspaceFolder}/CLAn/bin/Debug/net8.0/CLAn.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/CLAn",
+      // Weitere Informationen zum Feld \"Konsole\" finden Sie unter https://aka.ms/VSCode-CS-LaunchJson-Console
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Import 1",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/CLAn/bin/Debug/net8.0/CLAn.dll",
+      "args": ["import","--file","${workspaceFolder}/data/log1.txt"],
+      "cwd": "${workspaceFolder}/CLAn",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Import 2",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/CLAn/bin/Debug/net8.0/CLAn.dll",
+      "args": ["import","--file","${workspaceFolder}/data/log2.txt"],
+      "cwd": "${workspaceFolder}/CLAn",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Analyze",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/CLAn/bin/Debug/net8.0/CLAn.dll",
+      "args": ["analyze"],
+      "cwd": "${workspaceFolder}/CLAn",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Clean",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/CLAn/bin/Debug/net8.0/CLAn.dll",
+      "args": ["clean"],
+      "cwd": "${workspaceFolder}/CLAn",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": ".NET Core Attach",
+      "type": "coreclr",
+      "request": "attach"
+    }
+  ]
+}

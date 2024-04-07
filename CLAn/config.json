@@ -1,0 +1,17 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Data Source=log.db;"
+  },
+  "CSVData": {
+    "Separator": ";",
+    "MinColumns": 7,
+    "Column": {
+      "Date" : 0,
+      "Time": 1,
+      "PhoneNumberA": 2,
+      "PhoneNumberB": 3,
+      "Outbound": 5,
+      "Duration": 6
+    }
+  }
+}

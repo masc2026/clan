@@ -1,0 +1,15 @@
+# Changelog
+
+Alle nennenswerten Änderungen an diesem Projekt werden in diesem Dokument festgehalten.
+
+Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+und dieses Projekt hält sich an [Semantische Versionierung](https://semver.org/spec/v2.0.0.html).
+
+## 1.0.1 - 2024-04-07
+
+### Added
+- Initiale Version
+  - Es können Log Dateien importiert werden
+  - Es kann eine einfache Analyse der importierten Log Daten ausgegeben werden
+  - Es können einfache Anpassungen zum Format einer importierten Log Datei gemacht werden
+  - Der Import wird in eine SQLite Datenbank gemacht
