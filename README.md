@@ -1,5 +1,26 @@
 # CLAn - Call Log Analyzer
 
+This little C# puzzle was actually a **coding challenge for a Data Analyst role** 🤭
+
+## Summary of the Task
+
+> **Goal:** 
+>
+> Develop a console application in **C# (.NET 8.0)** to analyze two CSV files (`sample1_anonymized.csv`, `sample2_anonymized.csv`) > containing billing data from phone calls.
+> 
+> **Tasks:**
+> 
+> * Calculate various phone numbers: per file and in total.
+> 
+> * Identify the queried phone numbers (target numbers).
+> 
+> * Examine contacts between the two target numbers (when and how often?).
+> 
+> * Identify common contacts (phone numbers that appear in both source files).
+
+
+## Implementation
+
 A .NET 8.0 console application for analyzing telephone logs.
 
     ./CLAn/bin/Release/net8.0/publish/CLAn --help
@@ -18,6 +39,10 @@ A .NET 8.0 console application for analyzing telephone logs.
     analyze  Analyse durchführen
     clean    Alle Daten löschen
 
+**P.S.** 
+
+I used AI (specifically ChatGPT 4.0 in early 2024) to help draft parts of the [Python test data generator](./data/gendata.py). Let's just say this approach raised a few skeptical eyebrows from the interviewers — especially when they questioned if I'd done *any* part of the task without AI! They also warned my script wouldn't handle a million lines of test data. Got me there! I think I forgot some indices in the data model. 🤭
+
 ## Install 
 
 ### SDK & Runtime
@@ -32,7 +57,7 @@ Check if available:
 
 ### Load the Repository
     
-    git clone https://gitlab.com/ms152718212/clan.git
+    git clone https://github.com/masc2026/clan.git
 
 ## Build
 
@@ -43,7 +68,7 @@ Check if available:
 Test:
 
     ./CLAn/bin/Release/net8.0/publish/CLAn --version
-    1.0.0
+    1.0.1 ...
 
 ## Run
 
