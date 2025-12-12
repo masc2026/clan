@@ -135,6 +135,8 @@ namespace CLAn.Infrastructure.Data
 
                 entity.HasKey(log => log.Id);
 
+                entity.HasIndex(log => new { log.SenderId, log.ReceiverId, log.Validation, log.DateTime });
+
                 entity.HasIndex(log => log.SenderId);
 
                 entity.HasIndex(log => log.ReceiverId);

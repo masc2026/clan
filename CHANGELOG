@@ -13,3 +13,16 @@ und dieses Projekt hält sich an [Semantische Versionierung](https://semver.org/
   - Es kann eine einfache Analyse der importierten Log Daten ausgegeben werden
   - Es können einfache Anpassungen zum Format einer importierten Log Datei gemacht werden
   - Der Import wird in eine SQLite Datenbank gemacht
+
+## 1.0.2 - 2025-12-12
+### Added
+
+- Python-Skript (gendata.py) zur Generierung realistischer Massentestdaten (Simulation von Anruf-Netzwerken und natürlichen Zeitabläufen) (Genuine Gemini 3 Pro)
+- Ein Dataset mit "Telefonlog" Testdaten (Sample.zip)
+### Changed
+
+- Performance-Optimierung des Datei-Imports durch Nutzung von Transaktionen und Batch-Verarbeitung
+- Implementierung eines In-Memory Caches für Telefonnummern zur Reduzierung von Datenbankzugriffen während des Imports
+- Optimierung der Datenbank-Indizes für schnellere Analyse-Abfragen
+- Bereinigung der Versionsnummern-Ausgabe (Entfernung des Git-Commit-Hashs)
+- Performance Übersicht für zwei Plattformen im README.md

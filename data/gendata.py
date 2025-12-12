@@ -1,88 +1,158 @@
-# Dieser Code wurde zum Teil mit Hilfe von ChatGPT, Version 4.0, generiert.
-# Generierungsdatum: 2024-04-07
+# Dieser Code wurde mit Hilfe von Gemini 3 Pro erstellt.
+# Generierungsdatum: 2025-12-11
 #
-# Die Konfiguration, Initialiseriung, Anpassung und Überprüfung des Codes
-# erfolgte manuell, um die spezifischen Anforderungen des Projekts zu erfüllen.
 
-from datetime import date
-from datetime import timedelta
 import random
+from datetime import date, datetime, timedelta, time
+import os
 
-# Adjusting the script according to the new requirements
+# --- KONFIGURATION FÜR MAXIMALE DATEN ---
+OUTPUT_DIR = "data"
+FILES_TO_GENERATE = 15      # Erzeugt log1.csv bis log15.csv
+TARGET_ROWS = 50000         # Zielwert (wird durch Zeitlimit begrenzt, aber wir zielen hoch)
+START_DATE = date(2018, 1, 6)
+END_DATE = date(2025, 12, 11)
 
-# Updating the week day names to German
-def german_weekday(day):
-    weekdays = {
-        "Monday": "Mo.",
-        "Tuesday": "Di.",
-        "Wednesday": "Mi.",
-        "Thursday": "Do.",
-        "Friday": "Fr.",
-        "Saturday": "Sa.",
-        "Sunday": "So."
-    }
-    return weekdays[day]
+# Verhalten: "Plaudertasche" (kurze Pausen für mehr Daten)
+MIN_PAUSE_MINUTES = 1       # Fast sofort weitertelefonieren
+MAX_PAUSE_MINUTES = 15      # Max 15 Min Pause
+SLEEP_START_HOUR = 23       # Ab 23 Uhr Ruhe
+SLEEP_END_HOUR = 7          # Bis 7 Uhr Ruhe
 
-# Updating the prefix format to vary randomly
+# --- HILFSFUNKTIONEN ---
+
+def ensure_dir(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
 def random_prefix():
     return random.choice(["+49", "0", "0049"])
 
-# Adjusting the call duration to vary between 0 and 1200 seconds
-def random_duration_adjusted():
-    seconds = random.randint(0, 120)
-    return f"{seconds // 60:02}:{seconds % 60:02}"
+def generate_random_number():
+    prefix = random.choice(["151", "160", "170", "171", "162", "172", "157", "177"])
+    rest = "".join([str(random.randint(0, 9)) for _ in range(random.choice([7, 8]))])
+    return f"{prefix}{rest}"
 
-# Adjusting the function to generate call records within a specific date range
-def generate_call_records_adjusted(start_date, end_date, main_number, phone_partners):
+def format_number(raw_number):
+    return f"{random_prefix()}{raw_number}"
+
+# --- CORE LOGIC: REALISTIC SIMULATION ---
+
+WEEKDAYS = {0: "Mo.", 1: "Di.", 2: "Mi.", 3: "Do.", 4: "Fr.", 5: "Sa.", 6: "So."}
+
+def generate_log_content_simulated(max_rows, start_date, end_date, main_number_raw, partner_list_raw):
     call_records = []
-    current_date = start_date
+    
+    # Startzeitpunkt: 08:00 Uhr am ersten Tag
+    current_dt = datetime.combine(start_date, time(8, 0, 0))
+    end_dt_limit = datetime.combine(end_date, time(23, 59, 59))
+    
+    generated_count = 0
+    
+    while generated_count < max_rows and current_dt < end_dt_limit:
+        
+        # 1. PAUSE VOR DEM ANRUF
+        pause_minutes = random.randint(MIN_PAUSE_MINUTES, MAX_PAUSE_MINUTES)
+        current_dt += timedelta(minutes=pause_minutes)
+        
+        # 2. SCHLAF-CHECK
+        if current_dt.hour >= SLEEP_START_HOUR or current_dt.hour < SLEEP_END_HOUR:
+            if current_dt.hour >= SLEEP_START_HOUR:
+                current_dt += timedelta(days=1)
+            
+            current_dt = current_dt.replace(hour=SLEEP_END_HOUR, minute=0, second=0)
+            current_dt += timedelta(minutes=random.randint(5, 45)) # Kleiner Jitter
+        
+        if current_dt > end_dt_limit:
+            break
 
-    while current_date <= end_date:
-        # Generating random call date and time
-        call_date = f"{german_weekday(current_date.strftime('%A'))} {current_date.strftime('%d.%m.%Y')}"
-        call_time = f"{random.randint(0, 23):02}:{random.randint(0, 59):02}:{random.randint(0, 59):02}"
-
-        # Selecting random phone partner with adjusted prefix
-        partner_number = f"{random_prefix()}{random.choice(phone_partners)[3:]}"
-
-        # Randomly deciding the direction of the call
+        # 3. ANRUF DAUER (10s bis 5min)
+        duration_seconds = random.randint(10, 300)
+        
+        call_date_str = f"{WEEKDAYS[current_dt.weekday()]} {current_dt.strftime('%d.%m.%Y')}"
+        call_time_str = current_dt.strftime("%H:%M:%S")
+        duration_str = f"{duration_seconds // 60:02}:{duration_seconds % 60:02}"
+        
+        # Partner & Richtung
+        partner_raw = random.choice(partner_list_raw)
+        p_num = format_number(partner_raw)
+        m_num = format_number(main_number_raw)
+        
         direction = random.choice(["E", "S"])
-
-        # Assigning caller and receiver based on the direction with adjusted prefix
         if direction == "E":
-            caller = partner_number
-            receiver = f"{random_prefix()}{main_number[3:]}"
+            caller, receiver = p_num, m_num
         else:
-            caller = f"{random_prefix()}{main_number[3:]}"
-            receiver = partner_number
-
-        # Generating random call duration adjusted
-        duration = random_duration_adjusted()
-
-        # Adding the record to the list
-        call_records.append(f"{call_date};{call_time};{caller};{receiver};SPRACHE;{direction};{duration}")
-
-        # Incrementing the date for the next record
-        current_date += timedelta(days=1)  # Making sure we cover every day within the range
-
+            caller, receiver = m_num, p_num
+            
+        call_records.append(f"{call_date_str};{call_time_str};{caller};{receiver};SPRACHE;{direction};{duration_str}")
+        
+        # Zeit fortschreiben
+        current_dt += timedelta(seconds=duration_seconds)
+        generated_count += 1
+        
     return call_records
 
-# Setting the start and end date for the call records
-start_date = date(2022, 4, 6)
-end_date = date(2024, 8, 15)
+# --- NETZWERK SIMULATOR ---
 
-# Generating call records within the specified date range
+def create_scenarios(num_scenarios):
+    scenarios = []
+    # Globaler Pool von Nummern, die immer mal wieder bei verschiedenen Leuten auftauchen
+    global_pool = [generate_random_number() for _ in range(100)] 
+    
+    # Die Hauptnummern für unsere 15 Dateien
+    main_numbers = [generate_random_number() for _ in range(num_scenarios)]
+    
+    print(f"Planung des Netzwerks für {num_scenarios} Dateien...")
+    
+    for i in range(num_scenarios):
+        current_main = main_numbers[i]
+        partners = set()
+        
+        # Kette: Vorgänger & Nachfolger kennen
+        if i > 0: partners.add(main_numbers[i-1])
+        if i < num_scenarios - 1: partners.add(main_numbers[i+1])
+        
+        # Zufällige Vernetzung: Jeder kennt noch 1-2 andere Hauptverdächtige zufällig
+        other_mains = [m for m in main_numbers if m != current_main]
+        partners.update(random.sample(other_mains, k=2))
 
-# log1.txt
-#call_records_adjusted = generate_call_records_adjusted(start_date, end_date, "+491331234566",["+491221234567","+491511234555","+491511234444","+491511233333","+491511222222","+491511111111","+491555555555"])
+        # Gemeinsame Kontakte aus dem Pool (die "Unbeteiligten", die jeder kennt)
+        partners.update(random.sample(global_pool, k=random.randint(5, 15)))
+        
+        # Exklusive Kontakte (Mama, Papa, Pizzabote - kennt nur diese Person)
+        # Wir füllen auf bis ca 25-30 Kontakte pro Person
+        while len(partners) < 30:
+            partners.add(generate_random_number())
+            
+        scenarios.append((current_main, list(partners)))
+        print(f"  Szenario {i+1}: Main {current_main} hat {len(partners)} Kontakt-Partner.")
+        
+    return scenarios
 
-# log2.txt
-#call_records_adjusted = generate_call_records_adjusted(start_date, end_date, "+491221234567",["+491331234566","+491611234555","+491511234444","+491611233333","+491611222222","+491511111111","+491555555555"])
+# --- MAIN ---
 
-# log3.txt
-call_records_adjusted = generate_call_records_adjusted(start_date, end_date, "+491611233333",["+491331234566","+491611234555","+491221234567","+491611233333","+491611222222","+491513333331","+491544444445"])
+def main():
+    ensure_dir(OUTPUT_DIR)
+    scenarios = create_scenarios(FILES_TO_GENERATE)
+    
+    print(f"\nStarte Simulation (Zeitraum: {START_DATE} bis {END_DATE})...\n")
+    
+    total_calls = 0
+    for idx, (main_num, partner_list) in enumerate(scenarios):
+        filename = f"log{idx+1}.csv"
+        filepath = os.path.join(OUTPUT_DIR, filename)
+        
+        rows = generate_log_content_simulated(TARGET_ROWS, START_DATE, END_DATE, main_num, partner_list)
+        total_calls += len(rows)
+        
+        print(f"  -> {filename}: {len(rows)} Anrufe generiert.")
+        
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("Datum;Zeit;Anrufer;Angerufener;Typ;Richtung;Dauer\n")
+            for row in rows:
+                f.write(row + "\n")
+                
+    print(f"\nFertig! Insgesamt {total_calls} Datensätze in {FILES_TO_GENERATE} Dateien generiert.")
 
-# Displaying the first few records to check adjustments
-print("Datum;Zeit;Anrufer;Angerufener;Typ;Richtung;Dauer")
-for record in call_records_adjusted[:100]:
-    print(record)
+if __name__ == "__main__":
+    main()

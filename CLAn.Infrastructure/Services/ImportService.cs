@@ -14,6 +14,7 @@ using CLAn.Entities;
 using CLAn.Infrastructure.Data;
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 
 namespace CLAn.Infrastructure.Services
 {
@@ -22,6 +23,7 @@ namespace CLAn.Infrastructure.Services
         private readonly ILogger<IImportService> logger = loggerFactory.CreateLogger<ImportService>();
         private readonly ILogValidator validator = logValidator;
         private readonly SqliteContext context = sqliteConsoleContext;
+        private Dictionary<string, PhoneNumber> phoneNumberCache = new();
 
         private static string GenerateRandomName()
         {
@@ -36,58 +38,63 @@ namespace CLAn.Infrastructure.Services
             return $"Person{hexString}";
         }
 
-        private (Person,PhoneNumber) GetPersonByPhoneNumberOrNew(string number)
+        private PhoneNumber GetPhoneNumberInternal(string number)
         {
-            var person = context.Persons
-                    .Where(p => p.PhoneNumbers != null && p.PhoneNumbers.Any(pn => pn.Number == number))
-                    .FirstOrDefault();
-            if (person == null)
+            if (phoneNumberCache.TryGetValue(number, out var existingPn))
             {
-                String ownerName = GenerateRandomName();
-                person = new Person()
-                {
-                    Name = ownerName
-                };
-                context.Add(person);
-                context.SaveChanges();
-                var phoneNumber = new PhoneNumber()
-                {
-                    Number = number,
-                    Person = person,
-                    PersonId = person.Id
-                };
-                context.Add(phoneNumber);
-                context.SaveChanges();
-                return (person,phoneNumber);
+                return existingPn;
             }
-            else {
-                var phoneNumber = context.PhoneNumbers
-                    .Where(p => p.Number == number)
-                    .FirstOrDefault();
-                return (person!,phoneNumber!);
+
+            // Fallback: Prüfen ob schon in DB (falls Cache noch leer war)
+            var dbPn = context.PhoneNumbers
+                .Include(p => p.Person)
+                .FirstOrDefault(p => p.Number == number);
+
+            if (dbPn != null)
+            {
+                phoneNumberCache[number] = dbPn;
+                return dbPn;
             }
+            var newPerson = new Person { Name = GenerateRandomName() };
+            context.Persons.Add(newPerson);
+
+            var newPn = new PhoneNumber 
+            { 
+                Number = number, 
+                Person = newPerson,
+                PersonId = newPerson.Id 
+            }; 
+            context.PhoneNumbers.Add(newPn);
+            
+            phoneNumberCache[number] = newPn; 
+            
+            return newPn;
         }
 
         public void AddLogFile(string filePath)
         {
-            var ownerPhoneNumber = ReadOwnerPhoneNumber(filePath);
-            if(ownerPhoneNumber!=null) 
+            var ownerPhoneNumberString = ReadOwnerPhoneNumber(filePath);
+            if (ownerPhoneNumberString != null)
             {
-                var owner = GetPersonByPhoneNumberOrNew(ownerPhoneNumber);
+                phoneNumberCache = context.PhoneNumbers
+                                    .Include(p => p.Person)
+                                    .ToDictionary(k => k.Number, v => v);
+
+                var ownerPhoneNumber = GetPhoneNumberInternal(ownerPhoneNumberString);
 
                 var logFile = new LogFile()
                 {
                     FullPath = filePath,
-                    PersonId = owner.Item1.Id,
-                    Person = owner.Item1,
-                    OwnerPhoneNumber = owner.Item2,
-                    OwnerPhoneNumberId = owner.Item2.Id
+                    Person = ownerPhoneNumber.Person!,
+                    OwnerPhoneNumber = ownerPhoneNumber
                 };
 
                 context.LogFiles.Add(logFile);
-                context.SaveChanges();
-                Ingest(filePath, logFile, owner.Item2);
-                context.SaveChanges();
+                
+                context.SaveChanges(); 
+
+                Ingest(filePath, logFile, ownerPhoneNumber);
+                
                 Cleanup();
             }
         }
@@ -133,42 +140,42 @@ namespace CLAn.Infrastructure.Services
                 using (var reader = new StreamReader(filePath))
                 {
                     string? line;
-                    while ((line = reader.ReadLine()) != null)
+                    int maxLines = 10; 
+                    int current = 0;
+                    while ((line = reader.ReadLine()) != null && current < maxLines)
                     {
-                        try
+                        current++;
+                        if (validator.Validate(line) == LogValidationLevel.Valid && validator.GetItem<CSVLogValidator.CallDirection>("CallDirection") == CSVLogValidator.CallDirection.OutBound)
                         {
-                            LogValidationLevel lvl = validator.Validate(line);
-                            if (validator.Validate(line) == LogValidationLevel.Valid && validator.GetItem<CSVLogValidator.CallDirection>("CallDirection") == CSVLogValidator.CallDirection.OutBound)
-                            {
-                                return validator.GetItem<string>("PhoneNumberA");
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            logger.LogError(e.Message);
+                            return validator.GetItem<string>("PhoneNumberA");
                         }
                     }
                 }
             }
-            catch (Exception e)
-            {
-                logger.LogError(e.Message);
-            }
+            catch (Exception e) { logger.LogError(e.Message); }
             return null;
         }
 
         private void Ingest(string filePath, LogFile logFile, PhoneNumber ownerPhoneNumber)
         {
+            var sw = Stopwatch.StartNew();
+            context.ChangeTracker.AutoDetectChangesEnabled = false;
+
+            using var transaction = context.Database.BeginTransaction();
+
             try
             {
                 using (var reader = new StreamReader(filePath))
                 {
                     string? line;
                     int lineNumber = 0;
+                    int batchSize = 20000;
+
+                    var processedPnLogFiles = new HashSet<string>();
+
                     while ((line = reader.ReadLine()) != null)
                     {
                         lineNumber++;
-                        LogValidationLevel lvl = validator.Validate(line);
                         if (validator.Validate(line) == LogValidationLevel.Valid)
                         {
                             try 
@@ -176,100 +183,76 @@ namespace CLAn.Infrastructure.Services
                                 var senderPhoneNumber = validator.GetItem<string>("PhoneNumberA");
                                 var receiverPhoneNumber = validator.GetItem<string>("PhoneNumberB");
 
-                                var sender = GetPersonByPhoneNumberOrNew(senderPhoneNumber);
-                                var receiver = GetPersonByPhoneNumberOrNew(receiverPhoneNumber);
+                                var senderPn = GetPhoneNumberInternal(senderPhoneNumber);
+                                var receiverPn = GetPhoneNumberInternal(receiverPhoneNumber);
 
-                                var exists = context.PhoneNumberLogFiles
-                                    .Any(x => x.PhoneNumber.Number == senderPhoneNumber && x.LogFileId == logFile.Id);
-
-                                if (!exists)
+                                if (!processedPnLogFiles.Contains(senderPhoneNumber))
                                 {
-                                    var phoneNumber = context.PhoneNumbers
-                                        .Where(p => p.Number == senderPhoneNumber)
-                                        .FirstOrDefault();
-
-                                    if (phoneNumber != null)
+                                    if (context.Entry(senderPn).State == EntityState.Detached) context.PhoneNumbers.Attach(senderPn);
+                                    
+                                    context.PhoneNumberLogFiles.Add(new PhoneNumberLogFile
                                     {
-                                        var phoneNumberLogFile = new PhoneNumberLogFile
-                                        {
-                                            PhoneNumber = phoneNumber,
-                                            PhoneNumberId = phoneNumber.Id,
-                                            LogFile = logFile,
-                                            LogFileId = logFile.Id,
-                                            LogFileOwnerPhoneNumber = ownerPhoneNumber,
-                                            LogFileOwnerPhoneNumberId = ownerPhoneNumber.Id
-                                        };
-                                        context.PhoneNumberLogFiles.Add(phoneNumberLogFile);
-                                        context.SaveChanges();
-                                    }
+                                        PhoneNumber = senderPn,
+                                        LogFile = logFile,
+                                        LogFileOwnerPhoneNumber = ownerPhoneNumber
+                                    });
+                                    processedPnLogFiles.Add(senderPhoneNumber);
                                 }
-
-                                exists = context.PhoneNumberLogFiles
-                                    .Any(x => x.PhoneNumber.Number == receiverPhoneNumber && x.LogFileId == logFile.Id);
-
-                                if (!exists)
+                                if (!processedPnLogFiles.Contains(receiverPhoneNumber))
                                 {
-                                    var phoneNumber = context.PhoneNumbers
-                                        .Where(p => p.Number == receiverPhoneNumber)
-                                        .FirstOrDefault();
-
-                                    if (phoneNumber != null)
+                                    if (context.Entry(receiverPn).State == EntityState.Detached) context.PhoneNumbers.Attach(receiverPn);
+                                    
+                                    context.PhoneNumberLogFiles.Add(new PhoneNumberLogFile
                                     {
-                                        var phoneNumberLogFile = new PhoneNumberLogFile
-                                        {
-                                            PhoneNumber = phoneNumber,
-                                            PhoneNumberId = phoneNumber.Id,
-                                            LogFile = logFile,
-                                            LogFileId = logFile.Id,
-                                            LogFileOwnerPhoneNumber = ownerPhoneNumber,
-                                            LogFileOwnerPhoneNumberId = ownerPhoneNumber.Id
-                                        };
-                                        context.PhoneNumberLogFiles.Add(phoneNumberLogFile);
-                                        context.SaveChanges();
-                                    }
+                                        PhoneNumber = receiverPn,
+                                        LogFile = logFile,
+                                        LogFileOwnerPhoneNumber = ownerPhoneNumber
+                                    });
+                                    processedPnLogFiles.Add(receiverPhoneNumber);
                                 }
 
                                 DateTime dateTime = validator.GetItem<DateTime>("DateTime");
                                 long duration = validator.GetItem<long>("Duration");
-                                int senderId = sender.Item1.Id;
-                                int receiverId = receiver.Item1.Id;
 
-                                bool logExists = context.Logs.Any(log =>
-                                    log.DateTime == dateTime &&
-                                    log.Duration == duration &&
-                                    log.SenderId == senderId &&
-                                    log.ReceiverId == receiverId);
+                                if (context.Entry(senderPn).State == EntityState.Detached) context.PhoneNumbers.Attach(senderPn);
+                                if (context.Entry(receiverPn).State == EntityState.Detached) context.PhoneNumbers.Attach(receiverPn);
+                                if (context.Entry(logFile).State == EntityState.Detached) context.LogFiles.Attach(logFile);
+                                if (context.Entry(ownerPhoneNumber).State == EntityState.Detached) context.PhoneNumbers.Attach(ownerPhoneNumber);
 
-                                if (!logExists)
+                                var log = new Log()
                                 {
-                                    var log = new Log()
-                                    {
-                                        LineNumber = lineNumber,
-                                        DateTime = dateTime,
-                                        Duration = duration,
-                                        Raw = line,
-                                        SenderId = senderId,
-                                        Sender = sender.Item1,
-                                        ReceiverId = receiverId,
-                                        Receiver = receiver.Item1,
-                                        LogFileOwnerId = logFile.PersonId,
-                                        LogFileOwner = logFile.Person,
-                                        LogFileOwnerPhoneNumberId = ownerPhoneNumber.Id,
-                                        LogFileOwnerPhoneNumber = ownerPhoneNumber,
-                                        LogFile = logFile,
-                                        LogFileId = logFile.Id,
-                                        Validation = (int)lvl
-                                    };
+                                    LineNumber = lineNumber,
+                                    DateTime = dateTime,
+                                    Duration = duration,
+                                    Raw = line,
+                                    Sender = senderPn.Person, // Achtung: Hier ggf. auch attach prüfen, aber EF macht das meist via PhoneNumber
+                                    Receiver = receiverPn.Person,
+                                    LogFile = logFile,
+                                    LogFileOwner = logFile.Person,
+                                    LogFileOwnerPhoneNumber = ownerPhoneNumber,
+                                    Validation = (int)LogValidationLevel.Valid
+                                };
 
-                                    context.Logs.Add(log);
+                                context.Logs.Add(log);
+
+                                if (lineNumber % batchSize == 0)
+                                {
                                     context.SaveChanges();
+                                    context.ChangeTracker.Clear();
+                                    context.ChangeTracker.AutoDetectChangesEnabled = false; 
                                 }
                             }
                             catch(Exception e) {
+                                transaction.Rollback();
                                 logger.LogError(e.Message);
                             }
                         }
                     }
+                    context.SaveChanges();
+                    transaction.Commit();
+                    sw.Stop();
+                    Console.WriteLine($"\nFertig! {lineNumber} Zeilen in {sw.Elapsed.TotalSeconds:F2}s ({lineNumber/sw.Elapsed.TotalSeconds:F0} Zeilen/s)");
+
                 }
             }
             catch (FileNotFoundException fne)

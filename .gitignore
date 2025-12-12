@@ -3,9 +3,7 @@
 
 # Local User Data
 data/*
-!log1.txt
-!log2.txt
-!log3.txt
+!Sample.zip
 !gendata.py
 **/exe/*
 **log.db*
