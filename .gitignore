@@ -6,7 +6,13 @@ data/*
 !log1.csv
 !log2.csv
 !log3.csv
+!log4.csv
 !gendata.py
+
+edges.csv
+log.gephi
+nodes.csv
+
 **/exe/*
 **log.db*
 **.sqbpro

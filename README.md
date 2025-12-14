@@ -1,5 +1,13 @@
 # CLAn - Call Log Analyzer
 
+<div align="center">
+<img align="center" title="Gephi Graph" width="500" src="./img/graph.webp.png">
+</div>
+
+<br/>
+
+[^note-3]
+
 This little `C#` puzzle was actually a coding challenge for a data forensics 🕵️‍♂️ role [^note-2]
 
 ## Summary of the Task
@@ -21,6 +29,8 @@ This little `C#` puzzle was actually a coding challenge for a data forensics �
 [^note-1]: Two files each containing a few hundred lines were provided.
 
 [^note-2]: I used AI (specifically ChatGPT 4.0 in early 2024) to help draft parts of the Python test data generator `data/gendata.py`. Let's just say this approach raised some eyebrows among the interviewers—they asked if I'd managed *any* part of the task without AI! They also warned my script wouldn't handle a million lines of test data. Got me there! I think I forgot some indices and transaction techniques in the data model. I improved this with version 1.0.2.
+
+[^note-3]: Nodes: `sqlite3 -header -csv log.db "SELECT Id, Name AS Label FROM Person;" > nodes.csv` Edges: `sqlite3 -header -csv log.db "SELECT SenderId AS Source, ReceiverId AS Target, COUNT(*) AS Weight FROM Log GROUP BY SenderId, ReceiverId;" > edges.csv`
 
 ## Implementation
 
@@ -75,7 +85,7 @@ Check the Version
 
     ./CLAn/bin/Release/net8.0/publish/CLAn --version
 >
-    1.0.2.1
+    1.0.2.2
 
 ## About the Python Test Data Generator `gendata.py`
 
@@ -141,9 +151,11 @@ See [Log file format](#log-file-format).
 
 ### 2.) Import Data
 
-Example with 3 (according to the `FILES_TO_GENERATE` setting in [`gendata.py`](./data/gendata.py) ) call log files:
+Example with 4 (according to the `FILES_TO_GENERATE` setting in [`gendata.py`](./data/gendata.py) ) call log files:
 
-    for i in {1..3}; do ./CLAn/bin/Release/net8.0/publish/CLAn import -f data/log$i.csv; done
+`Zsh` command:
+
+    for i in {1..4}; do ./CLAn/bin/Release/net8.0/publish/CLAn import -f data/log$i.csv; done
 
 ### 3.) Analyze Data
 
@@ -153,124 +165,195 @@ Example (using the log files data in [./data/](./data/)):
 
     ############ F1: 
     Es gibt Abfragen zu:
-        Person456F4EBB (+49171*******) in Log-Datei: /Users/user/Projekte/github/clan/data/log1.csv
-        Person59AC8447 (+491773*******) in Log-Datei: /Users/user/Projekte/github/clan/data/log2.csv
-        PersonC3FC26BD (+491571*******) in Log-Datei: /Users/user/Projekte/github/clan/data/log3.csv
+        Person94726247 (+491518xxxxxxx) in Log-Datei: /home/user/Projekte/github/clan/data/log1.csv
+        Person4ED1757C (+491512xxxxxxx) in Log-Datei: /home/user/Projekte/github/clan/data/log2.csv
+        Person33B32595 (+491517xxxxxxx) in Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+        Person186C0C66 (+49160xxxxxxx) in Log-Datei: /home/user/Projekte/github/clan/data/log4.csv
     ############ F2: 
     Statistik zu den Telefonnummern:
-    Anzahl der unterschiedlichen Telefonnummern: 8 in Log-Datei: /Users/user/Projekte/github/clan/data/log1.csv
-    Anzahl der unterschiedlichen Telefonnummern: 5 in Log-Datei: /Users/user/Projekte/github/clan/data/log2.csv
-    Anzahl der unterschiedlichen Telefonnummern: 8 in Log-Datei: /Users/user/Projekte/github/clan/data/log3.csv
-    Gesamtzahl der unterschiedlichen Telefonnummern über alle Log-Dateien: 15
+    Anzahl der unterschiedlichen Telefonnummern: 9 in Log-Datei: /home/user/Projekte/github/clan/data/log1.csv
+    Anzahl der unterschiedlichen Telefonnummern: 10 in Log-Datei: /home/user/Projekte/github/clan/data/log2.csv
+    Anzahl der unterschiedlichen Telefonnummern: 14 in Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+    Anzahl der unterschiedlichen Telefonnummern: 8 in Log-Datei: /home/user/Projekte/github/clan/data/log4.csv
+    Gesamtzahl der unterschiedlichen Telefonnummern über alle Log-Dateien: 20
     ############ F3: 
     Telefonate der abgefragten Telefonnummern untereinander:
-    Es gab insgesamt 15 Telefonate zwischen PersonC3FC26BD (+491571*******) und Person456F4EBB (+49171*******).
-    Es gab 9 Anrufe von Person456F4EBB (+49171*******) an PersonC3FC26BD (+491571*******):
-        Datum: 17.09.2018 13:57:40 Dauer: 26280 [s]
-        Datum: 28.09.2018 12:57:34 Dauer: 34080 [s]
-        Datum: 06.07.2019 19:59:58 Dauer: 17520 [s]
-        Datum: 22.09.2019 15:15:42 Dauer: 20340 [s]
-        Datum: 22.05.2020 14:57:57 Dauer: 13680 [s]
-        Datum: 10.12.2021 15:35:55 Dauer: 27600 [s]
-        Datum: 25.06.2022 11:37:24 Dauer: 12900 [s]
-        Datum: 14.01.2024 08:26:24 Dauer: 6600 [s]
-        Datum: 11.03.2024 12:12:30 Dauer: 2820 [s]
-    Es gab 6 Anrufe von PersonC3FC26BD (+491571*******) an Person456F4EBB (+49171*******) :
-        Datum: 31.07.2018 18:42:50 Dauer: 19020 [s]
-        Datum: 08.09.2018 16:29:16 Dauer: 14700 [s]
-        Datum: 10.07.2020 10:39:04 Dauer: 31260 [s]
-        Datum: 02.04.2023 22:48:11 Dauer: 20820 [s]
-        Datum: 14.10.2023 18:23:04 Dauer: 12780 [s]
-        Datum: 30.12.2023 22:15:57 Dauer: 8820 [s]
-    Es gab insgesamt 17 Telefonate zwischen Person59AC8447 (+491773*******) und Person456F4EBB (+49171*******).
-    Es gab 6 Anrufe von Person456F4EBB (+49171*******) an Person59AC8447 (+491773*******):
-        Datum: 13.11.2018 12:01:52 Dauer: 14820 [s]
-        Datum: 24.12.2019 07:21:02 Dauer: 33660 [s]
-        Datum: 10.09.2020 14:43:25 Dauer: 3840 [s]
-        Datum: 19.01.2022 16:32:46 Dauer: 18720 [s]
-        Datum: 15.11.2022 07:33:37 Dauer: 19020 [s]
-        Datum: 12.05.2024 08:15:10 Dauer: 11640 [s]
-    Es gab 11 Anrufe von Person59AC8447 (+491773*******) an Person456F4EBB (+49171*******) :
-        Datum: 27.08.2018 21:00:41 Dauer: 11040 [s]
-        Datum: 03.12.2018 21:31:26 Dauer: 22620 [s]
-        Datum: 07.09.2019 20:56:58 Dauer: 27000 [s]
-        Datum: 04.11.2019 14:01:50 Dauer: 20160 [s]
-        Datum: 23.11.2019 14:35:45 Dauer: 4320 [s]
-        Datum: 04.01.2020 21:16:01 Dauer: 24360 [s]
-        Datum: 31.05.2020 16:32:21 Dauer: 30600 [s]
-        Datum: 25.03.2022 16:22:10 Dauer: 14520 [s]
-        Datum: 28.07.2022 16:42:21 Dauer: 31800 [s]
-        Datum: 07.03.2023 17:23:07 Dauer: 19920 [s]
-        Datum: 17.05.2025 10:40:59 Dauer: 1500 [s]
-    Es gab insgesamt 20 Telefonate zwischen Person59AC8447 (+491773*******) und PersonC3FC26BD (+491571*******).
-    Es gab 9 Anrufe von PersonC3FC26BD (+491571*******) an Person59AC8447 (+491773*******):
-        Datum: 24.09.2019 19:43:19 Dauer: 36000 [s]
-        Datum: 12.07.2020 17:27:48 Dauer: 17760 [s]
-        Datum: 26.01.2021 18:40:25 Dauer: 30840 [s]
-        Datum: 13.09.2021 12:03:21 Dauer: 23520 [s]
-        Datum: 28.04.2024 22:24:26 Dauer: 33780 [s]
-        Datum: 20.06.2024 12:53:42 Dauer: 8160 [s]
-        Datum: 25.05.2025 07:54:01 Dauer: 5280 [s]
-        Datum: 17.06.2025 14:34:48 Dauer: 25500 [s]
-        Datum: 23.06.2025 09:27:49 Dauer: 30720 [s]
-    Es gab 11 Anrufe von Person59AC8447 (+491773*******) an PersonC3FC26BD (+491571*******) :
-        Datum: 15.07.2018 21:07:59 Dauer: 21180 [s]
-        Datum: 01.09.2018 11:52:28 Dauer: 20100 [s]
-        Datum: 21.12.2018 11:41:15 Dauer: 5580 [s]
-        Datum: 21.08.2019 20:50:37 Dauer: 15780 [s]
-        Datum: 18.05.2021 14:29:37 Dauer: 15420 [s]
-        Datum: 11.01.2022 09:05:45 Dauer: 21300 [s]
-        Datum: 01.05.2022 12:52:26 Dauer: 19320 [s]
-        Datum: 29.07.2022 09:29:44 Dauer: 36000 [s]
-        Datum: 05.03.2023 07:51:53 Dauer: 14820 [s]
-        Datum: 27.04.2023 14:17:18 Dauer: 10560 [s]
-        Datum: 24.02.2025 22:42:43 Dauer: 14220 [s]
+    Es gab insgesamt 12 Telefonate zwischen Person33B32595 (+491517xxxxxxx) und Person94726247 (+491518xxxxxxx).
+    Es gab 6 Anrufe von Person94726247 (+491518xxxxxxx) an Person33B32595 (+491517xxxxxxx):
+        Datum: 10.01.2018 16:24:26 Dauer: 5820 [s]
+        Datum: 11.08.2021 22:57:57 Dauer: 6840 [s]
+        Datum: 25.03.2023 20:13:06 Dauer: 25320 [s]
+        Datum: 11.07.2023 15:27:45 Dauer: 15480 [s]
+        Datum: 06.05.2024 08:53:12 Dauer: 28920 [s]
+        Datum: 26.07.2025 14:04:42 Dauer: 29460 [s]
+    Es gab 6 Anrufe von Person33B32595 (+491517xxxxxxx) an Person94726247 (+491518xxxxxxx) :
+        Datum: 07.09.2018 09:16:21 Dauer: 4560 [s]
+        Datum: 28.03.2019 21:47:31 Dauer: 13080 [s]
+        Datum: 07.07.2019 20:11:02 Dauer: 28800 [s]
+        Datum: 20.08.2021 20:57:58 Dauer: 21840 [s]
+        Datum: 15.08.2022 21:19:51 Dauer: 12720 [s]
+        Datum: 05.08.2024 19:07:42 Dauer: 32400 [s]
+    Es gab insgesamt 6 Telefonate zwischen Person4ED1757C (+491512xxxxxxx) und Person94726247 (+491518xxxxxxx).
+    Es gab 3 Anrufe von Person94726247 (+491518xxxxxxx) an Person4ED1757C (+491512xxxxxxx):
+        Datum: 23.02.2019 16:14:30 Dauer: 26880 [s]
+        Datum: 27.01.2021 21:55:45 Dauer: 1800 [s]
+        Datum: 14.05.2021 12:48:33 Dauer: 34980 [s]
+    Es gab 3 Anrufe von Person4ED1757C (+491512xxxxxxx) an Person94726247 (+491518xxxxxxx) :
+        Datum: 20.12.2019 19:19:36 Dauer: 19860 [s]
+        Datum: 20.03.2020 10:19:10 Dauer: 11880 [s]
+        Datum: 26.03.2024 22:31:32 Dauer: 19500 [s]
+    Es gab insgesamt 10 Telefonate zwischen Person186C0C66 (+49160xxxxxxx) und Person94726247 (+491518xxxxxxx).
+    Es gab 5 Anrufe von Person94726247 (+491518xxxxxxx) an Person186C0C66 (+49160xxxxxxx):
+        Datum: 05.04.2019 10:10:48 Dauer: 5220 [s]
+        Datum: 04.04.2020 10:03:39 Dauer: 1920 [s]
+        Datum: 18.12.2021 17:42:11 Dauer: 35340 [s]
+        Datum: 20.05.2022 14:51:03 Dauer: 20220 [s]
+        Datum: 21.12.2022 20:43:51 Dauer: 9960 [s]
+    Es gab 5 Anrufe von Person186C0C66 (+49160xxxxxxx) an Person94726247 (+491518xxxxxxx) :
+        Datum: 05.05.2020 10:20:40 Dauer: 15360 [s]
+        Datum: 28.02.2021 16:54:57 Dauer: 600 [s]
+        Datum: 11.06.2022 14:41:38 Dauer: 3360 [s]
+        Datum: 13.02.2023 11:12:46 Dauer: 17220 [s]
+        Datum: 16.03.2024 18:36:19 Dauer: 23100 [s]
+    Es gab insgesamt 9 Telefonate zwischen Person4ED1757C (+491512xxxxxxx) und Person33B32595 (+491517xxxxxxx).
+    Es gab 6 Anrufe von Person33B32595 (+491517xxxxxxx) an Person4ED1757C (+491512xxxxxxx):
+        Datum: 27.03.2021 18:45:56 Dauer: 34020 [s]
+        Datum: 04.06.2022 08:10:28 Dauer: 13980 [s]
+        Datum: 02.07.2023 07:02:05 Dauer: 3000 [s]
+        Datum: 12.05.2024 09:38:48 Dauer: 25560 [s]
+        Datum: 07.03.2025 21:27:17 Dauer: 28860 [s]
+        Datum: 21.11.2025 17:42:54 Dauer: 24900 [s]
+    Es gab 3 Anrufe von Person4ED1757C (+491512xxxxxxx) an Person33B32595 (+491517xxxxxxx) :
+        Datum: 01.09.2020 12:16:36 Dauer: 22080 [s]
+        Datum: 03.11.2021 19:04:45 Dauer: 33420 [s]
+        Datum: 25.12.2024 18:46:12 Dauer: 27480 [s]
+    Es gab insgesamt 12 Telefonate zwischen Person186C0C66 (+49160xxxxxxx) und Person33B32595 (+491517xxxxxxx).
+    Es gab 5 Anrufe von Person33B32595 (+491517xxxxxxx) an Person186C0C66 (+49160xxxxxxx):
+        Datum: 17.02.2020 09:16:02 Dauer: 25860 [s]
+        Datum: 19.04.2023 13:08:38 Dauer: 7560 [s]
+        Datum: 11.06.2023 14:19:28 Dauer: 12900 [s]
+        Datum: 09.08.2024 07:32:01 Dauer: 24540 [s]
+        Datum: 20.11.2025 22:52:46 Dauer: 35940 [s]
+    Es gab 7 Anrufe von Person186C0C66 (+49160xxxxxxx) an Person33B32595 (+491517xxxxxxx) :
+        Datum: 16.11.2018 19:08:47 Dauer: 28200 [s]
+        Datum: 20.02.2019 09:25:36 Dauer: 23940 [s]
+        Datum: 30.12.2021 12:19:23 Dauer: 21360 [s]
+        Datum: 12.02.2022 20:59:15 Dauer: 5040 [s]
+        Datum: 27.12.2022 20:54:32 Dauer: 20820 [s]
+        Datum: 04.02.2025 14:13:13 Dauer: 4140 [s]
+        Datum: 23.03.2025 08:32:34 Dauer: 12240 [s]
+    Es gab insgesamt 10 Telefonate zwischen Person186C0C66 (+49160xxxxxxx) und Person4ED1757C (+491512xxxxxxx).
+    Es gab 2 Anrufe von Person4ED1757C (+491512xxxxxxx) an Person186C0C66 (+49160xxxxxxx):
+        Datum: 01.08.2018 19:51:00 Dauer: 8640 [s]
+        Datum: 27.05.2023 18:55:13 Dauer: 12900 [s]
+    Es gab 8 Anrufe von Person186C0C66 (+49160xxxxxxx) an Person4ED1757C (+491512xxxxxxx) :
+        Datum: 21.07.2018 12:03:37 Dauer: 17520 [s]
+        Datum: 10.01.2020 21:39:13 Dauer: 11040 [s]
+        Datum: 18.05.2020 19:41:14 Dauer: 15960 [s]
+        Datum: 31.01.2021 08:12:41 Dauer: 16260 [s]
+        Datum: 14.10.2022 20:07:34 Dauer: 1440 [s]
+        Datum: 07.11.2022 16:58:57 Dauer: 34440 [s]
+        Datum: 06.11.2023 11:14:25 Dauer: 19320 [s]
+        Datum: 06.11.2025 15:39:38 Dauer: 27900 [s]
     ############ F4: 
     Vorkommen von Telefonnummern in den Log-Files:
-    Person456F4EBB (+49171*******) kommmt vor in:
-        Log-Datei: /Users/user/Projekte/github/clan/data/log1.csv
-        Log-Datei: /Users/user/Projekte/github/clan/data/log2.csv
-        Log-Datei: /Users/user/Projekte/github/clan/data/log3.csv
-    Person58D55D1A (+491571*******) kommmt vor in:
-        Log-Datei: /Users/user/Projekte/github/clan/data/log1.csv
-    PersonC3FC26BD (+491571*******) kommmt vor in:
-        Log-Datei: /Users/user/Projekte/github/clan/data/log1.csv
-        Log-Datei: /Users/user/Projekte/github/clan/data/log2.csv
-        Log-Datei: /Users/user/Projekte/github/clan/data/log3.csv
-    Person59AC8447 (+491773*******) kommmt vor in:
-        Log-Datei: /Users/user/Projekte/github/clan/data/log1.csv
-        Log-Datei: /Users/user/Projekte/github/clan/data/log2.csv
-        Log-Datei: /Users/user/Projekte/github/clan/data/log3.csv
-    Person72B51001 (+491623*******) kommmt vor in:
-        Log-Datei: /Users/user/Projekte/github/clan/data/log1.csv
-    Person11D52BC1 (+491574*******) kommmt vor in:
-        Log-Datei: /Users/user/Projekte/github/clan/data/log1.csv
-    Person64E1E302 (+491722*******) kommmt vor in:
-        Log-Datei: /Users/user/Projekte/github/clan/data/log1.csv
-    Person91AD0477 (+49162*******) kommmt vor in:
-        Log-Datei: /Users/user/Projekte/github/clan/data/log1.csv
-    PersonEA75972A (+49162*******) kommmt vor in:
-        Log-Datei: /Users/user/Projekte/github/clan/data/log2.csv
-    Person876D6E6C (+49177*******) kommmt vor in:
-        Log-Datei: /Users/user/Projekte/github/clan/data/log2.csv
-    Person567C2AE6 (+49160*******) kommmt vor in:
-        Log-Datei: /Users/user/Projekte/github/clan/data/log3.csv
-    Person4B92451A (+491705*******) kommmt vor in:
-        Log-Datei: /Users/user/Projekte/github/clan/data/log3.csv
-    PersonC242941A (+491715*******) kommmt vor in:
-        Log-Datei: /Users/user/Projekte/github/clan/data/log3.csv
-    PersonE6A94DF9 (+49177*******) kommmt vor in:
-        Log-Datei: /Users/user/Projekte/github/clan/data/log3.csv
-    PersonFABF6FE9 (+49157*******) kommmt vor in:
-        Log-Datei: /Users/user/Projekte/github/clan/data/log3.csv
+    Person94726247 (+491518xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log1.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log2.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log4.csv
+    Person33B32595 (+491517xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log1.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log2.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log4.csv
+    Person4ED1757C (+491512xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log1.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log2.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log4.csv
+    Person186C0C66 (+49160xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log1.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log2.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log4.csv
+    Person886EEC45 (+49162xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log1.csv
+    Person0B191ED1 (+491623xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log1.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log2.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+    PersonF766EABF (+491720xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log1.csv
+    PersonE2825312 (+491513xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log1.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log2.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log4.csv
+    PersonAF4ADC69 (+491570xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log1.csv
+    Person96AE63A8 (+49177xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log2.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log4.csv
+    Person6EC71F21 (+491729xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log2.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+        Log-Datei: /home/user/Projekte/github/clan/data/log4.csv
+    Person816EF31C (+49151xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log2.csv
+    Person76682D61 (+491627xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log2.csv
+    PersonF21E4E36 (+491622xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+    PersonF8F433A7 (+49151xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+    PersonBC5C6B08 (+49172xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+    Person56757B99 (+491774xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+    PersonF4E4E3D3 (+491725xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+    PersonCD84930E (+49177xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log3.csv
+    Person1996A2A9 (+491620xxxxxxx) kommmt vor in:
+        Log-Datei: /home/user/Projekte/github/clan/data/log4.csv
     ############ F5: 
     Gemeinsame Telefonkontakte:
-    Die Abgefragten Person456F4EBB, PersonC3FC26BD hatten jeweils Anrufe mit:
-        Person59AC8447 (+491773*******)
-    Die Abgefragten Person456F4EBB, Person59AC8447 hatten jeweils Anrufe mit:
-        PersonC3FC26BD (+491571*******)
-    Die Abgefragten PersonC3FC26BD, Person59AC8447 hatten jeweils Anrufe mit:
-        Person456F4EBB (+49171*******)
+    Die Abgefragten Person94726247, Person33B32595 hatten jeweils Anrufe mit:
+        Person4ED1757C (+491512xxxxxxx)
+        Person186C0C66 (+49160xxxxxxx)
+        Person0B191ED1 (+491623xxxxxxx)
+        PersonE2825312 (+491513xxxxxxx)
+    Die Abgefragten Person94726247, Person4ED1757C hatten jeweils Anrufe mit:
+        Person33B32595 (+491517xxxxxxx)
+        Person186C0C66 (+49160xxxxxxx)
+        Person0B191ED1 (+491623xxxxxxx)
+        PersonE2825312 (+491513xxxxxxx)
+    Die Abgefragten Person94726247, Person186C0C66 hatten jeweils Anrufe mit:
+        Person33B32595 (+491517xxxxxxx)
+        Person4ED1757C (+491512xxxxxxx)
+        PersonE2825312 (+491513xxxxxxx)
+    Die Abgefragten Person33B32595, Person4ED1757C hatten jeweils Anrufe mit:
+        Person94726247 (+491518xxxxxxx)
+        Person186C0C66 (+49160xxxxxxx)
+        Person0B191ED1 (+491623xxxxxxx)
+        PersonE2825312 (+491513xxxxxxx)
+        Person96AE63A8 (+49177xxxxxxx)
+        Person6EC71F21 (+491729xxxxxxx)
+    Die Abgefragten Person33B32595, Person186C0C66 hatten jeweils Anrufe mit:
+        Person94726247 (+491518xxxxxxx)
+        Person4ED1757C (+491512xxxxxxx)
+        PersonE2825312 (+491513xxxxxxx)
+        Person96AE63A8 (+49177xxxxxxx)
+        Person6EC71F21 (+491729xxxxxxx)
+    Die Abgefragten Person4ED1757C, Person186C0C66 hatten jeweils Anrufe mit:
+        Person94726247 (+491518xxxxxxx)
+        Person33B32595 (+491517xxxxxxx)
+        PersonE2825312 (+491513xxxxxxx)
+        Person96AE63A8 (+49177xxxxxxx)
+        Person6EC71F21 (+491729xxxxxxx)
+
 
 
 ### Clean Data

@@ -8,7 +8,7 @@ import os
 
 # --- KONFIGURATION ---
 OUTPUT_DIR = "data"
-FILES_TO_GENERATE = 3
+FILES_TO_GENERATE = 4
 TARGET_ROWS_PER_FILE = 50  
 START_DATE = date(2018, 1, 6)
 END_DATE = date(2025, 12, 11)
@@ -16,6 +16,7 @@ END_DATE = date(2025, 12, 11)
 # Verhalten
 SLEEP_START_HOUR = 23
 SLEEP_END_HOUR = 7
+NUM_SUB_CLANS = 5 # Anzahl der "Schattenmänner" / Gruppen
 
 # --- HELPER ---
 
@@ -35,14 +36,10 @@ def format_number(raw_number):
     return f"{random_prefix()}{raw_number}"
 
 def format_log_entry(dt, caller_num, receiver_num, direction, duration_seconds):
-    """Erstellt den CSV-String für eine Zeile"""
     duration_str = f"{duration_seconds // 60:02}:{duration_seconds % 60:02}"
-    
-    # Wochentag auf Deutsch
     weekday = ['Mo.', 'Di.', 'Mi.', 'Do.', 'Fr.', 'Sa.', 'So.'][dt.weekday()]
     date_str = f"{weekday} {dt.strftime('%d.%m.%Y')}"
     time_str = dt.strftime("%H:%M:%S")
-    
     return f"{date_str};{time_str};{caller_num};{receiver_num};SPRACHE;{direction};{duration_str}"
 
 # --- WELT SIMULATION ---
@@ -51,9 +48,8 @@ class Suspect:
     def __init__(self, id):
         self.id = id
         self.raw_number = generate_raw_number()
-        self.partners = [] 
-        self.external_numbers = [] 
-        # Wir speichern Tupel: (timestamp, csv_line_string) für korrektes Sortieren später
+        self.partners = []         # Interne Partner (andere überwachte Personen)
+        self.external_numbers = [] # Externe Nummern (Mama, Pizza, Schattenmänner)
         self.logs = [] 
 
 def create_network(num_suspects):
@@ -66,17 +62,42 @@ def create_network(num_suspects):
         suspects[i].partners.append(prev_s)
         suspects[i].partners.append(next_s)
     
-    # 2. Zufällige Querverbindungen
+    # 2. Zufällige interne Querverbindungen
     for s in suspects:
         others = [x for x in suspects if x != s and x not in s.partners]
         if others:
             s.partners.extend(random.sample(others, k=min(len(others), random.randint(2, 4))))
             
-        # 3. Externe Kontakte
-        for _ in range(20):
+        # 3. Private externe Kontakte (nur für diese Person)
+        for _ in range(15):
             s.external_numbers.append(generate_raw_number())
             
     return suspects
+
+def inject_sub_clans(suspects):
+    """
+    Erzeugt 'Schattenmänner' (Nummern), die von mehreren, 
+    aber nicht allen Suspects kontaktiert werden.
+    Das simuliert die Sub-Clans.
+    """
+    print(f"Injiziere {NUM_SUB_CLANS} Sub-Clans (Schattenmänner)...")
+    
+    for i in range(NUM_SUB_CLANS):
+        # Das ist Person D (der Schattenmann)
+        shadow_man_number = generate_raw_number()
+        
+        # Wähle zufällig 2 bis 5 Mitglieder für diesen Sub-Clan aus
+        # Beispiel: Suspect 1, 4 und 8 kennen diesen Schattenmann. Suspect 0 nicht.
+        clan_members = random.sample(suspects, k=random.randint(2, len(suspects)))
+        
+        member_ids = [str(s.id + 1) for s in clan_members]
+        print(f"  -> Schattenmann {shadow_man_number} ist bekannt bei Logs: {', '.join(member_ids)}")
+        
+        for member in clan_members:
+            # Wir fügen den Schattenmann MEHRFACH hinzu, damit er häufiger angerufen wird
+            # als die zufällige 'Tante Erna'.
+            for _ in range(5): 
+                member.external_numbers.append(shadow_man_number)
 
 def generate_global_calls(suspects):
     total_calls_needed = int(TARGET_ROWS_PER_FILE * len(suspects) * 0.7)
@@ -84,8 +105,6 @@ def generate_global_calls(suspects):
     
     delta_total = (END_DATE - START_DATE).days * 24 * 3600
     start_ts = datetime.combine(START_DATE, time(0,0)).timestamp()
-    
-    # Zeitstempel sortiert generieren
     timestamps = sorted([start_ts + random.randint(0, delta_total) for _ in range(total_calls_needed)])
     
     generated_count = 0
@@ -93,25 +112,25 @@ def generate_global_calls(suspects):
     for ts in timestamps:
         dt_sender = datetime.fromtimestamp(ts)
         
-        # Nachtruhe
         if dt_sender.hour >= SLEEP_START_HOUR or dt_sender.hour < SLEEP_END_HOUR:
             continue
             
         caller = random.choice(suspects)
         
-        # Intern vs Extern
-        is_internal = random.random() < 0.8
+        # Intern (zu anderen Log-Dateien) vs Extern (zu unüberwachten Nummern)
+        is_internal = random.random() < 0.7 # 70% intern, 30% extern (damit die Schattenmänner Traffic kriegen)
         
         if is_internal and caller.partners:
             receiver = random.choice(caller.partners)
             receiver_num_str = receiver.raw_number
         else:
             receiver = None
+            # Hier sind jetzt auch die Schattenmänner drin!
             receiver_num_str = random.choice(caller.external_numbers)
         
         duration_sender = random.randint(10, 600)
         
-        # --- SENDER LOG (Original) ---
+        # --- SENDER LOG ---
         log_entry_sender = format_log_entry(
             dt_sender, 
             format_number(caller.raw_number), 
@@ -121,14 +140,13 @@ def generate_global_calls(suspects):
         )
         caller.logs.append((ts, log_entry_sender))
         
-        # --- RECEIVER LOG (Mit Jitter) ---
+        # --- RECEIVER LOG (nur bei internen Partnern) ---
         if receiver:
-            # 1. Zeit-Jitter (0 bis 10 Sekunden Verzögerung beim Empfang)
+            # Jitter Logik
             jitter_time = random.randint(0, 10)
             dt_receiver = dt_sender + timedelta(seconds=jitter_time)
             ts_receiver = dt_receiver.timestamp()
             
-            # 2. Dauer-Jitter (-5 bis +5 Sekunden Abweichung, aber mind. 1 Sekunde)
             jitter_duration = random.randint(-5, 5)
             duration_receiver = max(1, duration_sender + jitter_duration)
             
@@ -139,8 +157,6 @@ def generate_global_calls(suspects):
                 "E", 
                 duration_receiver
             )
-            
-            # WICHTIG: Wir speichern auch hier den Timestamp für die Sortierung
             receiver.logs.append((ts_receiver, log_entry_receiver))
             
         generated_count += 1
@@ -150,8 +166,11 @@ def generate_global_calls(suspects):
 def main():
     ensure_dir(OUTPUT_DIR)
     
-    print("Baue Netzwerk...")
+    print("Baue Basis-Netzwerk...")
     suspects = create_network(FILES_TO_GENERATE)
+    
+    # NEU: Hier werden die Sub-Clans gebildet
+    inject_sub_clans(suspects)
     
     print("Simuliere Anrufe...")
     generate_global_calls(suspects)
@@ -161,9 +180,6 @@ def main():
         filename = f"log{s.id + 1}.csv"
         filepath = os.path.join(OUTPUT_DIR, filename)
         
-        # SORTIERUNG: Wir sortieren nach dem Timestamp (Index 0 im Tupel)
-        # Damit sind die Logs chronologisch korrekt, auch wenn Empfangs-Logs 
-        # durch Jitter oder Generierungsreihenfolge durcheinander waren.
         s.logs.sort(key=lambda x: x[0])
         
         with open(filepath, "w", encoding="utf-8") as f:

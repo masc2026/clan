@@ -15,6 +15,7 @@ und dieses Projekt hält sich an [Semantische Versionierung](https://semver.org/
   - Der Import wird in eine SQLite Datenbank gemacht
 
 ## 1.0.2 - 2025-12-12
+
 ### Added
 
 - Python-Skript (gendata.py) zur Generierung realistischer Massentestdaten (Simulation von Anruf-Netzwerken und natürlichen Zeitabläufen) (Genuine Gemini 3 Pro)
@@ -34,3 +35,8 @@ und dieses Projekt hält sich an [Semantische Versionierung](https://semver.org/
 
 ### Changed
 - **gendata.py**: Simulation von "Jitter" (zufällige Abweichungen) für Anrufdauer und Zeitpunkte bei korrespondierenden Anrufen hinzugefügt, um realistische Netzwerklatenzen und Provider-Unterschiede abzubilden. (Code durch Gemini 3 Pro generiert)
+
+## 1.0.2.2 - 2025-12-14
+
+### Changed
+- **gendata.py**: Simulation von Personen, die mit manchen aber nicht allen Überwachten Kontakt hatten.
