@@ -26,3 +26,11 @@ und dieses Projekt hält sich an [Semantische Versionierung](https://semver.org/
 - Optimierung der Datenbank-Indizes für schnellere Analyse-Abfragen
 - Bereinigung der Versionsnummern-Ausgabe (Entfernung des Git-Commit-Hashs)
 - Performance Übersicht für zwei Plattformen im README.md
+
+## 1.0.2.1 - 2025-12-14
+
+### Fixed
+- **gendata.py**: Anrufe von A an B tauchen jetzt konsistent in beiden Telefonlisten (als ausgehend bei A und eingehend bei B) auf. (Code durch Gemini 3 Pro generiert)
+
+### Changed
+- **gendata.py**: Simulation von "Jitter" (zufällige Abweichungen) für Anrufdauer und Zeitpunkte bei korrespondierenden Anrufen hinzugefügt, um realistische Netzwerklatenzen und Provider-Unterschiede abzubilden. (Code durch Gemini 3 Pro generiert)
