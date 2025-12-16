@@ -1,7 +1,7 @@
 # CLAn - Call Log Analyzer
 
 <div align="center">
-<img align="center" title="Gephi Graph" width="500" src="./img/graph.webp.png">
+<img align="center" title="Gephi Link Analysis Chart" width="500" src="./img/graph.svg">
 </div>
 
 <br/>
@@ -30,7 +30,32 @@ This little `C#` puzzle was actually a coding challenge for a data forensics ðŸ•
 
 [^note-2]: I used AI (specifically ChatGPT 4.0 in early 2024) to help draft parts of the Python test data generator `data/gendata.py`. Let's just say this approach raised some eyebrows among the interviewersâ€”they asked if I'd managed *any* part of the task without AI! They also warned my script wouldn't handle a million lines of test data. Got me there! I think I forgot some indices and transaction techniques in the data model. I improved this with version 1.0.2.
 
-[^note-3]: Nodes: `sqlite3 -header -csv log.db "SELECT Id, Name AS Label FROM Person;" > nodes.csv` Edges: `sqlite3 -header -csv log.db "SELECT SenderId AS Source, ReceiverId AS Target, COUNT(*) AS Weight FROM Log GROUP BY SenderId, ReceiverId;" > edges.csv`
+[^note-3]: **Nodes:**`sqlite3 -header -csv log.db "SELECT DISTINCT 
+    AllIds.Id, 
+    COALESCE(Person.Name, 'Unbekannt (' || AllIds.Id || ')') AS Label
+FROM (
+    SELECT SenderId AS Id FROM Log
+    UNION
+    SELECT ReceiverId AS Id FROM Log
+) AS AllIds
+LEFT JOIN Person ON AllIds.Id = Person.Id" > nodes.csv`
+**Edges:**`sqlite3 -header -csv log.db "WITH FilteredLog AS (
+    SELECT 
+        SenderId,
+        ReceiverId,
+        datetime,
+        CAST(strftime('%s', datetime) AS INTEGER) - LAG(CAST(strftime('%s', datetime) AS INTEGER)) OVER (ORDER BY ReceiverId||'|'||SenderId, datetime) AS time_diff,
+        (ReceiverId||'|'||SenderId != LAG(ReceiverId||'|'||SenderId) OVER (ORDER BY ReceiverId||'|'||SenderId, datetime)) as rs_changed
+    FROM Log
+)
+SELECT 
+    SenderId AS Source, 
+    ReceiverId AS Target, 
+    COUNT(*) AS Weight,
+    'Directed' AS Type
+FROM FilteredLog 
+WHERE time_diff IS NULL OR time_diff > 5 OR rs_changed = 1
+GROUP BY SenderId, ReceiverId" > edges.csv`
 
 ## Implementation
 
