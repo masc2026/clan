@@ -9,6 +9,8 @@ data/*
 !log4.csv
 !gendata.py
 
+*gephi*
+
 edges.csv
 log.gephi
 nodes.csv

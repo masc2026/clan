@@ -1,5 +1,5 @@
 # Dieser Code wurde mit Hilfe von Gemini 3 Pro erstellt.
-# Generierungsdatum: 2025-12-14
+# Generierungsdatum: 2025-12-17
 #
 
 import random
@@ -9,7 +9,7 @@ import os
 # --- KONFIGURATION ---
 OUTPUT_DIR = "data"
 FILES_TO_GENERATE = 4
-TARGET_ROWS_PER_FILE = 50  
+TARGET_ROWS_PER_FILE = 100  
 START_DATE = date(2018, 1, 6)
 END_DATE = date(2025, 12, 11)
 
@@ -100,55 +100,56 @@ def inject_sub_clans(suspects):
                 member.external_numbers.append(shadow_man_number)
 
 def generate_global_calls(suspects):
-    total_calls_needed = int(TARGET_ROWS_PER_FILE * len(suspects) * 0.7)
-    print(f"Simuliere ca. {total_calls_needed} Anrufe weltweit mit Jitter...")
+    # Schätzung: Ein Anruf erzeugt im Schnitt 1.7 Log-Einträge 
+    # (Intern=2 Einträge, Extern=1 Eintrag, bei 70/30 Verteilung)
+    total_calls_needed = int((TARGET_ROWS_PER_FILE * len(suspects)) / 1.7)
     
-    delta_total = (END_DATE - START_DATE).days * 24 * 3600
+    print(f"Simuliere {total_calls_needed} Anrufe, um ca. {TARGET_ROWS_PER_FILE} Zeilen pro Datei zu erreichen...")
+    
+    # Zeitgrenzen als Timestamp
     start_ts = datetime.combine(START_DATE, time(0,0)).timestamp()
-    timestamps = sorted([start_ts + random.randint(0, delta_total) for _ in range(total_calls_needed)])
+    end_ts = datetime.combine(END_DATE, time(23,59)).timestamp()
     
     generated_count = 0
     
-    for ts in timestamps:
-        dt_sender = datetime.fromtimestamp(ts)
+    # Wir loopen genau so oft, wie wir Anrufe brauchen
+    for _ in range(total_calls_needed):
         
-        if dt_sender.hour >= SLEEP_START_HOUR or dt_sender.hour < SLEEP_END_HOUR:
-            continue
-            
+        # 1. Finde einen validen Zeitpunkt (außerhalb der Schlafenszeit)
+        while True:
+            ts = random.uniform(start_ts, end_ts)
+            dt_sender = datetime.fromtimestamp(ts)
+            # Wenn NICHT Schlafenszeit ist, brechen wir aus und nehmen den Zeitpunkt
+            if not (dt_sender.hour >= SLEEP_START_HOUR or dt_sender.hour < SLEEP_END_HOUR):
+                break
+        
         caller = random.choice(suspects)
         
         # Intern (zu anderen Log-Dateien) vs Extern (zu unüberwachten Nummern)
-        is_internal = random.random() < 0.7 # 70% intern, 30% extern (damit die Schattenmänner Traffic kriegen)
+        is_internal = random.random() < 0.7 
         
+        # --- FALL A: INTERNER ANRUF ---
         if is_internal and caller.partners:
             receiver = random.choice(caller.partners)
-            receiver_num_str = receiver.raw_number
-        else:
-            receiver = None
-            # Hier sind jetzt auch die Schattenmänner drin!
-            receiver_num_str = random.choice(caller.external_numbers)
-        
-        duration_sender = random.randint(10, 600)
-        
-        # --- SENDER LOG ---
-        log_entry_sender = format_log_entry(
-            dt_sender, 
-            format_number(caller.raw_number), 
-            format_number(receiver_num_str), 
-            "S", 
-            duration_sender
-        )
-        caller.logs.append((ts, log_entry_sender))
-        
-        # --- RECEIVER LOG (nur bei internen Partnern) ---
-        if receiver:
-            # Jitter Logik
+            duration = random.randint(10, 600)
+            
+            # Sender Log (Ausgehend)
+            log_entry_sender = format_log_entry(
+                dt_sender, 
+                format_number(caller.raw_number), 
+                format_number(receiver.raw_number), 
+                "S", 
+                duration
+            )
+            caller.logs.append((ts, log_entry_sender))
+            
+            # Receiver Log (Eingehend) mit Jitter
             jitter_time = random.randint(0, 10)
             dt_receiver = dt_sender + timedelta(seconds=jitter_time)
             ts_receiver = dt_receiver.timestamp()
             
             jitter_duration = random.randint(-5, 5)
-            duration_receiver = max(1, duration_sender + jitter_duration)
+            duration_receiver = max(1, duration + jitter_duration)
             
             log_entry_receiver = format_log_entry(
                 dt_receiver, 
@@ -159,9 +160,39 @@ def generate_global_calls(suspects):
             )
             receiver.logs.append((ts_receiver, log_entry_receiver))
             
+        # --- FALL B: EXTERNER ANRUF (Bidirektional!) ---
+        else:
+            # Hier greift deine "5x hinzugefügt"-Logik automatisch, 
+            # weil die Schattenmänner öfter in dieser Liste stehen!
+            external_num_str = random.choice(caller.external_numbers)
+            duration = random.randint(10, 600)
+            
+            is_incoming = random.random() < 0.5
+            
+            if is_incoming:
+                # Externer ruft Verdächtigen an (Eingehend)
+                log_entry = format_log_entry(
+                    dt_sender, 
+                    format_number(external_num_str),  # Caller = Extern
+                    format_number(caller.raw_number), # Receiver = Verdächtiger
+                    "E", 
+                    duration
+                )
+            else:
+                # Verdächtiger ruft Externen an (Ausgehend)
+                log_entry = format_log_entry(
+                    dt_sender, 
+                    format_number(caller.raw_number), # Caller = Verdächtiger
+                    format_number(external_num_str),  # Receiver = Extern
+                    "S", 
+                    duration
+                )
+            
+            caller.logs.append((ts, log_entry))
+
         generated_count += 1
-        if generated_count % 50000 == 0:
-            print(f"  ... {generated_count} Anrufe verarbeitet.")
+        if generated_count % 5000 == 0:
+            print(f"  ... {generated_count} Anrufe generiert.")
 
 def main():
     ensure_dir(OUTPUT_DIR)
